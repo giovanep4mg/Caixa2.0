@@ -60,6 +60,7 @@ def editar_arquivo_excel():
         return
 
     tem_dados = not df.empty and len(df) > 0
+    moedaCasa_anterior_informado = 0.0
     
     # Se a planilha estiver vazia, pede os valores anteriores manualmente (ex: 1º dia do mês)
     if not tem_dados:
@@ -72,7 +73,7 @@ def editar_arquivo_excel():
         if resp_inicial is None:
             return
         try:
-            moedaCasa_anterior = converter_valor(resp_inicial[0])
+            moedaCasa_anterior_informado = converter_valor(resp_inicial[0])
             total_anterior = converter_valor(resp_inicial[1])
         except ValueError:
             eg.msgbox("❌ Erro nos valores iniciais! Digite números válidos.", "Erro")
@@ -133,7 +134,14 @@ def editar_arquivo_excel():
     caixa = dinhSalao + notas2
     totalbancos = sicoob + sumup + nullbank + mercPago
 
-    moedaCasa_atual = moedaCasa_informado
+    # Cálculo correto acumulando a Moeda Casa
+    if not tem_dados:
+        moedaCasa_anterior = moedaCasa_anterior_informado
+    else:
+        moedaCasa_anterior = ultimo_moedaCasa
+
+    moedaCasa_atual = moedaCasa_informado + moedaCasa_anterior
+
     totalsoma = casa + caixa + totalbancos + moedaSalao + moedaCasa_atual
 
     novo_lucro = totalsoma - total_anterior
