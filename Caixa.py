@@ -53,7 +53,7 @@ def interface_grafica():
     ]
 
     while True:
-        resposta = eg.multbox(msg, title, fieldNames, fieldValues)
+        resposta = eg.multenterbox(msg, title, fieldNames, fieldValues)
         if resposta is None:
             return
 
