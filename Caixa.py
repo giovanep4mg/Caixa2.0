@@ -134,12 +134,13 @@ def editar_arquivo_excel():
     caixa = dinhSalao + notas2
     totalbancos = sicoob + sumup + nullbank + mercPago
 
-    # Cálculo correto acumulando a Moeda Casa
+    # Garante a definição correta do acumulado anterior da Moeda Casa
     if not tem_dados:
         moedaCasa_anterior = moedaCasa_anterior_informado
     else:
         moedaCasa_anterior = ultimo_moedaCasa
 
+    # Soma rigorosa: O que entrou hoje + o que já estava acumulado anteriormente
     moedaCasa_atual = moedaCasa_informado + moedaCasa_anterior
 
     totalsoma = casa + caixa + totalbancos + moedaSalao + moedaCasa_atual
