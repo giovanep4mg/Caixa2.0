@@ -42,7 +42,7 @@ def criar_arquivo_excel():
             messagebox.showerror("Erro", f"Erro ao criar arquivo: {e}")
 
 def editar_arquivo_excel():
-    """Abre um arquivo existente, preenche os dados de forma unificada e atualiza a planilha."""
+    """Abre um arquivo existente, lida com dados iniciais se vazio, preenche o formulário e atualiza."""
     nome_arquivo = filedialog.askopenfilename(
         filetypes=[("Arquivo Excel", "*.xlsx")],
         title="Selecione o Arquivo Excel do Caixa"
@@ -59,107 +59,51 @@ def editar_arquivo_excel():
         messagebox.showerror("Erro", f"Erro ao abrir arquivo: {e}")
         return
 
-    # Pega valores anteriores para preencher os campos automaticamente
     tem_dados = not df.empty and len(df) > 0
     
-    ultimo_sicoob = df['Sicoob'].iloc[-1] if tem_dados and 'Sicoob' in df.columns and pd.notna(df['Sicoob'].iloc[-1]) else 0.0
-    ultimo_sumup = df['Sumup'].iloc[-1] if tem_dados and 'Sumup' in df.columns and pd.notna(df['Sumup'].iloc[-1]) else 0.0
-    ultimo_nullbank = df['Nullbank'].iloc[-1] if tem_dados and 'Nullbank' in df.columns and pd.notna(df['Nullbank'].iloc[-1]) else 0.0
-    ultimo_mercPago = df['MercPago'].iloc[-1] if tem_dados and 'MercPago' in df.columns and pd.notna(df['MercPago'].iloc[-1]) else 0.0
-    ultimo_moedaCasa = df['Moeda/Casa'].iloc[-1] if tem_dados and 'Moeda/Casa' in df.columns and pd.notna(df['Moeda/Casa'].iloc[-1]) else 0.0
-    ultimo_totalSoma = df['TotalSoma'].iloc[-1] if tem_dados and 'TotalSoma' in df.columns and pd.notna(df['TotalSoma'].iloc[-1]) else 0.0
+    # Se a planilha estiver vazia, pede os valores anteriores manualmente (ex: 1º dia do mês)
+    if not tem_dados:
+        msg_inicial = "A planilha está vazia (1º Lançamento).\nInsira os saldos anteriores paraIsso é um ajuste super importante para o fluxo do seu aplicativo de caixa! Para lidar com o primeiro dia do mês — ou qualquer momento em que você precise inserir um saldo inicial ou dados acumulados anteriores —, precisamos modificar a lógica do seu código Python (provavelmente no script que gera o executável com o PyInstaller).
 
-    msg = "Preencha os dados do Caixa Diário (Use ponto ou vírgula para decimais):"
-    title = "Controle de Caixa - Lançamento"
-    fieldNames = [
-        "Dia", "Dinheiro Salão", "Notas de 2", "Moeda Salão", 
-        "Dinheiro Casa", "Moeda Casa", "Gasto do Dia", 
-        "Sicoob", "Sumup", "Nullbank", "MercPago"
-    ]
-    
-    fieldValues = [
-        "", "", "", "", "", 
-        str(ultimo_moedaCasa), "", 
-        str(ultimo_sicoob), str(ultimo_sumup), 
-        str(ultimo_nullbank), str(ultimo_mercPago)
-    ]
+Aqui está como você pode estruturar essa adição no seu código:
 
-    while True:
-        resposta = eg.multenterbox(msg, title, fieldNames, fieldValues)
-        if resposta is None:
-            return  # Cancelado pelo usuário
+### 1. Atualizar a Entrada de Dados (Interface ou Terminal)
+Se você estiver usando `tkinter` ou `easygui`, pode criar campos específicos (ou uma janela de diálogo condicional) que só aparecem se for o fechamento/abertura do mês, ou deixar os campos sempre disponíveis de forma opcional.
 
-        try:
-            dia = int(converter_valor(resposta[0]))
-            dinhSalao = converter_valor(resposta[1])
-            notas2 = converter_valor(resposta[2])
-            moedaSalao = converter_valor(resposta[3])
-            dinhCasa = converter_valor(resposta[4])
-            moedaCasa_informado = converter_valor(resposta[5])
-            gastoDia = converter_valor(resposta[6])
-            
-            sicoob = converter_valor(resposta[7])
-            sumup = converter_valor(resposta[8])
-            nullbank = converter_valor(resposta[9])
-            mercPago = converter_valor(resposta[10])
-            break
-        except ValueError:
-            eg.msgbox("❌ Erro em algum valor numérico! Verifique se digitou letras ou caracteres inválidos (use ponto ou vírgula para decimais).", "Erro de Formato")
-            fieldValues = resposta
+Exemplo conceitual de como capturar esses valores em Python:
 
-    # Lógica de cálculos
-    casa = dinhCasa
-    caixa = dinhSalao + notas2
-    totalbancos = sicoob + sumup + nullbank + mercPago
+```python
+import easygui as eg
 
-    moedaCasa_atual = moedaCasa_informado
-    totalsoma = casa + caixa + totalbancos + moedaSalao + moedaCasa_atual
 
-    total_anterior = ultimo_totalSoma
-    novo_lucro = totalsoma - total_anterior
-    totalDia = novo_lucro + gastoDia
+def obter_dados_iniciais():
+    # Pergunta se deseja inserir dados anteriores (ideal para o 1º dia do mês)
+    continuar = eg.ccbox(
+        "É o primeiro dia do mês ou deseja inserir dados anteriores?",
+        "Dados Anteriores",
+        choices=("Sim", "Não"),
+    )
 
-    nova_linha = {
-        'Dia': dia, 'Dinh/Salao': dinhSalao, 'Notas2': notas2, 'Moeda/Salao': moedaSalao,
-        'Dinh/Casa': dinhCasa, 'Moeda/Casa': moedaCasa_atual, 'Gasto/Dia': gastoDia,
-        'Sicoob': sicoob, 'Sumup': sumup, 'Nullbank': nullbank, 'MercPago': mercPago,
-        'TotalBancos': totalbancos, 'Casa': casa, 'Caixa': caixa, 'TotalSoma': totalsoma,
-        'Lucro': novo_lucro, 'TotalDia': totalDia, 'TotalAnterior': total_anterior
-    }
+    valor_moedas_antigas = 0.0
+    valor_total_anterior = 0.0
 
-    df_novo = pd.DataFrame([nova_linha])
-    df = pd.concat([df, df_novo], ignore_index=True)
+    if continuar:
+        msg = "Insira os dados do período anterior:"
+        title = "Configuração Inicial do Mês"
+        fieldNames = [
+            "Valor acumulado em moedas anterior (R$):",
+            "Valor total anterior (R$):",
+        ]
+        fieldValues = eg.multbox(msg, title, fieldNames)
 
-    try:
-        writer = pd.ExcelWriter(nome_arquivo, engine='xlsxwriter')
-        df.to_excel(writer, index=False)
-        workbook = writer.book
-        worksheet = writer.sheets['Sheet1']
-        formato_numero = workbook.add_format({'num_format': '#,##0.00'})
-        worksheet.set_column('B:S', 15, formato_numero)
-        writer.close()
-        
-        messagebox.showinfo("Sucesso", f"Dados do dia {dia} salvos e arquivo atualizado com sucesso!")
-    except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao salvar o arquivo Excel (Verifique se ele está aberto no Excel): {e}")
+        if fieldValues:
+            try:
+                valor_moedas_antigas = float(fieldValues[0].replace(",", "."))
+                valor_total_anterior = float(fieldValues[1].replace(",", "."))
+            except ValueError:
+                eg.msgbox(
+                    "Erro: Digite apenas números válidos!", "Erro de Formato"
+                )
+                return obter_dados_iniciais()  # Tenta novamente se houver erro
 
-def criar_janela():
-    janela = tk.Tk()
-    janela.title("Gerenciador de Caixa")
-    janela.geometry("500x350")
-    janela.config(bg="#f0f0f0")
-
-    # Título visual na janela
-    titulo = tk.Label(janela, text="Controle de Caixa Diário", font=("Arial", 16, "bold"), bg="#f0f0f0")
-    titulo.pack(pady=20)
-
-    botao_novo = tk.Button(janela, text="Criar Novo Excel", command=criar_arquivo_excel, width=25, height=2, font=("Arial", 11), bg="#4CAF50", fg="white")
-    botao_novo.pack(pady=10)
-
-    botao_editar = tk.Button(janela, text="Editar / Adicionar Dia no Excel", command=editar_arquivo_excel, width=25, height=2, font=("Arial", 11), bg="#2196F3", fg="white")
-    botao_editar.pack(pady=10)
-
-    janela.mainloop()
-
-if __name__ == "__main__":
-    criar_janela()
+    return valor_moedas_antigas, valor_total_anterior
