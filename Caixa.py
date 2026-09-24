@@ -42,7 +42,7 @@ def criar_arquivo_excel():
             messagebox.showerror("Erro", f"Erro ao criar arquivo: {e}")
 
 def editar_arquivo_excel():
-    """Abre um arquivo existente, trata dados iniciais se vazio, preenche o formulário e atualiza."""
+    """Abre um arquivo existente e permite fazer vários lançamentos seguidos sem precisar reabrir."""
     nome_arquivo = filedialog.askopenfilename(
         filetypes=[("Arquivo Excel", "*.xlsx")],
         title="Selecione o Arquivo Excel do Caixa"
@@ -50,67 +50,68 @@ def editar_arquivo_excel():
     if not nome_arquivo:
         return
 
-    try:
-        df = pd.read_excel(nome_arquivo)
-    except FileNotFoundError:
-        messagebox.showerror("Erro", "O arquivo não foi encontrado.")
-        return
-    except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao abrir arquivo: {e}")
-        return
-
-    tem_dados = not df.empty and len(df) > 0
-    moedaCasa_anterior_informado = 0.0
-    
-    # Se a planilha estiver vazia, pede os valores anteriores manualmente (ex: 1º dia do mês)
-    if not tem_dados:
-        msg_inicial = "A planilha está vazia (1º Lançamento).\nInsira os saldos anteriores para o cálculo correto:"
-        title_inicial = "Configuração Inicial - 1º Dia"
-        fields_inicial = ["Moeda Casa Anterior", "Total Soma Anterior"]
-        values_inicial = ["0.0", "0.0"]
-        
-        resp_inicial = eg.multenterbox(msg_inicial, title_inicial, fields_inicial, values_inicial)
-        if resp_inicial is None:
-            return
-        try:
-            moedaCasa_anterior_informado = converter_valor(resp_inicial[0])
-            total_anterior = converter_valor(resp_inicial[1])
-        except ValueError:
-            eg.msgbox("❌ Erro nos valores iniciais! Digite números válidos.", "Erro")
-            return
-        
-        ultimo_sicoob = 0.0
-        ultimo_sumup = 0.0
-        ultimo_nullbank = 0.0
-        ultimo_mercPago = 0.0
-        ultimo_moedaCasa = 0.0
-    else:
-        total_anterior = df['TotalSoma'].iloc[-1] if 'TotalSoma' in df.columns and pd.notna(df['TotalSoma'].iloc[-1]) else 0.0
-        ultimo_sicoob = df['Sicoob'].iloc[-1] if 'Sicoob' in df.columns and pd.notna(df['Sicoob'].iloc[-1]) else 0.0
-        ultimo_sumup = df['Sumup'].iloc[-1] if 'Sumup' in df.columns and pd.notna(df['Sumup'].iloc[-1]) else 0.0
-        ultimo_nullbank = df['Nullbank'].iloc[-1] if 'Nullbank' in df.columns and pd.notna(df['Nullbank'].iloc[-1]) else 0.0
-        ultimo_mercPago = df['MercPago'].iloc[-1] if 'MercPago' in df.columns and pd.notna(df['MercPago'].iloc[-1]) else 0.0
-        ultimo_moedaCasa = df['Moeda/Casa'].iloc[-1] if 'Moeda/Casa' in df.columns and pd.notna(df['Moeda/Casa'].iloc[-1]) else 0.0
-
-    msg = "Preencha os dados do Caixa Diário (Use ponto ou vírgula para decimais):"
-    title = "Controle de Caixa - Lançamento"
-    fieldNames = [
-        "Dia", "Dinheiro Salão", "Notas de 2", "Moeda Salão", 
-        "Dinheiro Casa", "Moeda Casa", "Gasto do Dia", 
-        "Sicoob", "Sumup", "Nullbank", "MercPago"
-    ]
-    
-    fieldValues = [
-        "", "", "", "", "", 
-        str(ultimo_moedaCasa), "", 
-        str(ultimo_sicoob), str(ultimo_sumup), 
-        str(ultimo_nullbank), str(ultimo_mercPago)
-    ]
-
+    # Loop para continuar lançando dados no mesmo arquivo selecionado
     while True:
+        try:
+            df = pd.read_excel(nome_arquivo)
+        except FileNotFoundError:
+            messagebox.showerror("Erro", "O arquivo não foi encontrado.")
+            return
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao abrir arquivo: {e}")
+            return
+
+        tem_dados = not df.empty and len(df) > 0
+        moedaCasa_anterior_informado = 0.0
+        
+        # Se a planilha estiver vazia, pede os valores anteriores manualmente (ex: 1º dia do mês)
+        if not tem_dados:
+            msg_inicial = "A planilha está vazia (1º Lançamento).\nInsira os saldos anteriores para o cálculo correto:"
+            title_inicial = "Configuração Inicial - 1º Dia"
+            fields_inicial = ["Moeda Casa Anterior", "Total Soma Anterior"]
+            values_inicial = ["0.0", "0.0"]
+            
+            resp_inicial = eg.multenterbox(msg_inicial, title_inicial, fields_inicial, values_inicial)
+            if resp_inicial is None:
+                break  # Se cancelar, sai do loop de lançamentos
+            try:
+                moedaCasa_anterior_informado = converter_valor(resp_inicial[0])
+                total_anterior = converter_valor(resp_inicial[1])
+            except ValueError:
+                eg.msgbox("❌ Erro nos valores iniciais! Digite números válidos.", "Erro")
+                continue
+            
+            ultimo_sicoob = 0.0
+            ultimo_sumup = 0.0
+            ultimo_nullbank = 0.0
+            ultimo_mercPago = 0.0
+            ultimo_moedaCasa = 0.0
+        else:
+            total_anterior = df['TotalSoma'].iloc[-1] if 'TotalSoma' in df.columns and pd.notna(df['TotalSoma'].iloc[-1]) else 0.0
+            ultimo_sicoob = df['Sicoob'].iloc[-1] if 'Sicoob' in df.columns and pd.notna(df['Sicoob'].iloc[-1]) else 0.0
+            ultimo_sumup = df['Sumup'].iloc[-1] if 'Sumup' in df.columns and pd.notna(df['Sumup'].iloc[-1]) else 0.0
+            ultimo_nullbank = df['Nullbank'].iloc[-1] if 'Nullbank' in df.columns and pd.notna(df['Nullbank'].iloc[-1]) else 0.0
+            ultimo_mercPago = df['MercPago'].iloc[-1] if 'MercPago' in df.columns and pd.notna(df['MercPago'].iloc[-1]) else 0.0
+            ultimo_moedaCasa = df['Moeda/Casa'].iloc[-1] if 'Moeda/Casa' in df.columns and pd.notna(df['Moeda/Casa'].iloc[-1]) else 0.0
+
+        msg = "Preencha os dados do Caixa Diário (Use ponto ou vírgula para decimais):"
+        title = "Controle de Caixa - Lançamento"
+        fieldNames = [
+            "Dia", "Dinheiro Salão", "Notas de 2", "Moeda Salão", 
+            "Dinheiro Casa", "Moeda Casa", "Gasto do Dia", 
+            "Sicoob", "Sumup", "Nullbank", "MercPago"
+        ]
+        
+        fieldValues = [
+            "", "", "", "", "", 
+            str(ultimo_moedaCasa), "", 
+            str(ultimo_sicoob), str(ultimo_sumup), 
+            str(ultimo_nullbank), str(ultimo_mercPago)
+        ]
+
         resposta = eg.multenterbox(msg, title, fieldNames, fieldValues)
         if resposta is None:
-            return
+            break  # Se cancelar a janela de preenchimento, sai do loop
 
         try:
             dia = int(converter_valor(resposta[0]))
@@ -125,52 +126,57 @@ def editar_arquivo_excel():
             sumup = converter_valor(resposta[8])
             nullbank = converter_valor(resposta[9])
             mercPago = converter_valor(resposta[10])
-            break
         except ValueError:
             eg.msgbox("❌ Erro em algum valor numérico! Verifique se digitou letras ou caracteres inválidos.", "Erro de Formato")
-            fieldValues = resposta
+            continue
 
-    casa = dinhCasa
-    caixa = dinhSalao + notas2
-    totalbancos = sicoob + sumup + nullbank + mercPago
+        casa = dinhCasa
+        caixa = dinhSalao + notas2
+        totalbancos = sicoob + sumup + nullbank + mercPago
 
-    # Garante a definição correta do acumulado anterior da Moeda Casa
-    if not tem_dados:
-        moedaCasa_anterior = moedaCasa_anterior_informado
-    else:
-        moedaCasa_anterior = ultimo_moedaCasa
+        if not tem_dados:
+            moedaCasa_anterior = moedaCasa_anterior_informado
+        else:
+            moedaCasa_anterior = ultimo_moedaCasa
 
-    # Soma rigorosa: O que entrou hoje + o que já estava acumulado anteriormente
-    moedaCasa_atual = moedaCasa_informado + moedaCasa_anterior
+        moedaCasa_atual = moedaCasa_informado + moedaCasa_anterior
+        totalsoma = casa + caixa + totalbancos + moedaSalao + moedaCasa_atual
 
-    totalsoma = casa + caixa + totalbancos + moedaSalao + moedaCasa_atual
+        novo_lucro = totalsoma - total_anterior
+        totalDia = novo_lucro + gastoDia
 
-    novo_lucro = totalsoma - total_anterior
-    totalDia = novo_lucro + gastoDia
+        nova_linha = {
+            'Dia': dia, 'Dinh/Salao': dinhSalao, 'Notas2': notas2, 'Moeda/Salao': moedaSalao,
+            'Dinh/Casa': dinhCasa, 'Moeda/Casa': moedaCasa_atual, 'Gasto/Dia': gastoDia,
+            'Sicoob': sicoob, 'Sumup': sumup, 'Nullbank': nullbank, 'MercPago': mercPago,
+            'TotalBancos': totalbancos, 'Casa': casa, 'Caixa': caixa, 'TotalSoma': totalsoma,
+            'Lucro': novo_lucro, 'TotalDia': totalDia, 'TotalAnterior': total_anterior
+        }
 
-    nova_linha = {
-        'Dia': dia, 'Dinh/Salao': dinhSalao, 'Notas2': notas2, 'Moeda/Salao': moedaSalao,
-        'Dinh/Casa': dinhCasa, 'Moeda/Casa': moedaCasa_atual, 'Gasto/Dia': gastoDia,
-        'Sicoob': sicoob, 'Sumup': sumup, 'Nullbank': nullbank, 'MercPago': mercPago,
-        'TotalBancos': totalbancos, 'Casa': casa, 'Caixa': caixa, 'TotalSoma': totalsoma,
-        'Lucro': novo_lucro, 'TotalDia': totalDia, 'TotalAnterior': total_anterior
-    }
+        df_novo = pd.DataFrame([nova_linha])
+        df = pd.concat([df, df_novo], ignore_index=True)
 
-    df_novo = pd.DataFrame([nova_linha])
-    df = pd.concat([df, df_novo], ignore_index=True)
+        try:
+            writer = pd.ExcelWriter(nome_arquivo, engine='xlsxwriter')
+            df.to_excel(writer, index=False)
+            workbook = writer.book
+            worksheet = writer.sheets['Sheet1']
+            formato_numero = workbook.add_format({'num_format': '#,##0.00'})
+            worksheet.set_column('B:S', 15, formato_numero)
+            writer.close()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao salvar o arquivo Excel (Verifique se ele está aberto): {e}")
+            break
 
-    try:
-        writer = pd.ExcelWriter(nome_arquivo, engine='xlsxwriter')
-        df.to_excel(writer, index=False)
-        workbook = writer.book
-        worksheet = writer.sheets['Sheet1']
-        formato_numero = workbook.add_format({'num_format': '#,##0.00'})
-        worksheet.set_column('B:S', 15, formato_numero)
-        writer.close()
+        # Pergunta se deseja fazer um novo lançamento no mesmo arquivo
+        continuar = eg.ccbox(
+            f"✅ Dados do dia {dia} salvos com sucesso!\n\nDeseja realizar outro lançamento neste mesmo arquivo?", 
+            "Continuar Lançamentos?", 
+            choices=("Sim, lançar outro", "Não, voltar ao menu")
+        )
         
-        messagebox.showinfo("Sucesso", f"Dados do dia {dia} salvos e arquivo atualizado com sucesso!")
-    except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao salvar o arquivo Excel (Verifique se ele está aberto): {e}")
+        if not continuar:
+            break  # Encerra o loop e volta para a janela principal com os botões
 
 def criar_janela():
     janela = tk.Tk()
